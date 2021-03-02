@@ -1,0 +1,143 @@
+---
+title: "STAT433 - HW3"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(nycflights13)
+library(ggplot2)
+library(dplyr)
+library(lubridate)
+library(ggrepel)
+```
+
+# Homework Instruction:
+  Due Monday March 1 (less than two weeks away!): In r4ds flights… What time of day should you fly if you want to avoid delays as much as possible? Does this choice depend on anything? Season? Weather? Airport? Airline? Find three patterns (“null results” are ok!). Write your results into Rmarkdown. Include a short introduction that summarizes the three results. Then, have a section for each finding. Support each finding with data summaries and visualizations. Include your code when necessary. This shouldn’t be long, but it might take some time to find the things you want to talk about and lay them out in an orderly way.
+
+# Data Playground:
+  Let's first merge the datasets, flights, planes, weather, and airpot, into a bulk raw data. Then, we calculate the average delay by time and plot it
+  
+```{r, echo=FALSE}
+flights_raw <- flights %>%
+  left_join(weather) %>%
+  left_join(planes, by ="tailnum") %>%
+  left_join(airports, c("origin" = "faa"))
+
+by_hour <- flights_raw %>%
+  group_by(hour(time_hour)) %>%
+  summarise(delay = mean(dep_delay, na.rm = TRUE),
+            count = n())
+
+gg_hour <- by_hour %>%
+  ggplot(mapping = aes(x = `hour(time_hour)`, y = delay)) +
+  geom_point(mapping = aes(size = count)) +
+  geom_smooth(se = FALSE) +
+  scale_x_continuous(name = "Time of a day (24 hours format)", 
+                     limits = c(5, 23)) +
+  scale_y_continuous(name = "Average Delay",
+                     limits = c(-10, 70)) +
+  theme_bw()
+
+gg_hour;
+```
+
+The graph shows that the average delay complies our common sense: the later your flight is, it is more likely to be delayed (except the declining after 10pm).    
+We'll go over three different variables, airlines, original destination, and the type of engine, combined with the previous findings. Then, we'll delve into what's the rational decision making in terms of flights time not to get delayed.
+
+# Hypothesis 1: Airlines    
+American airline companies such as Delta and American Alines are famous for beating up their customers in literal and figurative ways. Those notorious misdeed including delaying flights without compensation. So, this section researches the relationship between the average hourly delay and the airplane carriers. 
+
+```{r, echo = FALSE}
+by_carrier <- flights_raw %>%
+  group_by(hour(time_hour), carrier) %>%
+  summarize(delay = mean(dep_delay, na.rm = TRUE),
+            count = n())
+
+
+gg_carrier <- by_carrier %>%
+  ggplot(mapping = aes(x = `hour(time_hour)`, 
+                       y = delay)) +
+  geom_point(mapping = aes(color = carrier,
+                           size = count,
+                           alpha = 0.5)) +
+  geom_smooth(se = FALSE) +
+  geom_label_repel(mapping = aes(label = carrier)) +
+  scale_x_continuous(name = "Time of a day (24 hours format)", 
+                     limits = c(5, 23)) +
+  scale_y_continuous(name = "Average Delay",
+                     limits = c(-10, 70)) +
+  theme_bw()
+
+gg_carrier
+```
+
+It seems like no matter what airline you choose, the airline companies delays flight in similar manner (trend). However, I suggest not to prioritze booking with OO, EV, FL, and WN because they are frequently delayed too often and too long!
+
+# Hypothesis 2: Origin  
+We comprehend that the airline companies follows the hypothetical average delay per hour trend. On the other hands, the time is assumed to be related to the traffic of an airport. Therefore, we'll figure out the relationship between average delay by hour and the origination,
+
+```{r, echo = FALSE}
+by_origin <- flights_raw %>%
+  group_by(hour(time_hour), origin) %>%
+  summarize(delay = mean(dep_delay, na.rm = TRUE))
+
+gg_origin1 <- by_origin %>%
+  ggplot(mapping = aes(x = `hour(time_hour)`, 
+                       y = delay)) +
+  geom_point(mapping = aes(col = origin)) +
+  geom_smooth(se = FALSE) +
+  scale_x_continuous(name = "Time of a day (24 hours format)", 
+                     limits = c(5, 23)) +
+  scale_y_continuous(name = "Average Delay",
+                     limits = c(-10, 70)) +
+  theme_bw()
+
+gg_origin2 <- by_origin %>%
+  ggplot(mapping = aes(x = `hour(time_hour)`, 
+                       y = delay)) +
+  geom_point(mapping = aes(col = origin)) +
+  geom_smooth(se = FALSE) +
+  scale_x_continuous(name = "Time of a day (24 hours format)", 
+                     limits = c(5, 23)) +
+  scale_y_continuous(name = "Average Delay",
+                     limits = c(-10, 70)) +
+  theme_bw() +
+  facet_grid( ~ origin)
+
+gg_origin1; gg_origin2
+```
+
+It seems like the origination of the flight departure also follows the trend suggested above. 
+
+
+# Hypothesis 3: Engine
+
+Like a car, an engine is a heart of an airplane. I'm not figuratively speaking nor trying to highlighting the importance of an engine. It's more like "if you've got a really really unreliable heart, you can die of myocardial infarction by just standing up like the elderly." Most flights requires to over-throttle to take-off because it requires at least one speed/weight ratio to an object to defy gravity. However, while overthrottling is common, it harms the engine. Therefore, the types of engine may affect the delay.
+
+
+```{r, echo = FALSE}
+by_engine <- flights_raw %>%
+  group_by(hour(time_hour), engine) %>%
+  summarize(delay = mean(dep_delay, na.rm = TRUE))
+
+gg_engine <- by_engine %>%
+  ggplot(mapping = aes(x = `hour(time_hour)`, 
+                       y = delay)) +
+  geom_point(mapping = aes(col = engine)) +
+  geom_smooth(se = FALSE) +
+  geom_label_repel(mapping = aes(label = engine)) +
+  scale_x_continuous(name = "Time of a day (24 hours format)", 
+                     limits = c(5, 23)) +
+  scale_y_continuous(name = "Average Delay",
+                     limits = c(-10, 70)) +
+  theme_bw()
+
+gg_engine
+```
+
+It seems like on average, the shaft-engine has higher avergae delay by hours than other engine types. I think it's because they are only used for small aricrafts or helicopters.
+
+
+# Github Address:
+https://github.com/rlawlstjr544/HW3
